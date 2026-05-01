@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
+
+from inventario.reports.pdf import generar_pdf_tabular
 
 
 @dataclass(slots=True)
@@ -41,8 +44,9 @@ class MovimientoGeneralRecord:
 
 
 class ReporteService:
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: Session, output_dir: Path) -> None:
         self.session = session
+        self.output_dir = output_dir
 
     def obtener_stock_actual(self) -> list[StockActualRecord]:
         sql = """
@@ -92,3 +96,66 @@ class ReporteService:
         """
         rows = self.session.execute(text(sql)).mappings()
         return [MovimientoGeneralRecord(**row) for row in rows]
+
+    def exportar_stock_actual_pdf(self) -> Path:
+        registros = self.obtener_stock_actual()
+        filas = [
+            [
+                r.codigo,
+                r.nombre,
+                r.unidad_medida,
+                str(r.stock_actual),
+                str(r.stock_minimo),
+                "Si" if r.activo else "No",
+                r.ultima_actualizacion,
+            ]
+            for r in registros
+        ]
+        return generar_pdf_tabular(
+            "Reporte de stock actual",
+            ["Codigo", "Nombre", "Unidad", "Stock", "Minimo", "Activo", "Actualizacion"],
+            filas,
+            self.output_dir / "stock_actual.pdf",
+        )
+
+    def exportar_stock_bajo_pdf(self) -> Path:
+        registros = self.obtener_stock_bajo()
+        filas = [
+            [
+                r.codigo,
+                r.nombre,
+                str(r.stock_actual),
+                str(r.stock_minimo),
+                str(r.diferencia_faltante),
+                r.ultima_actualizacion,
+            ]
+            for r in registros
+        ]
+        return generar_pdf_tabular(
+            "Reporte de productos con stock bajo",
+            ["Codigo", "Nombre", "Stock", "Minimo", "Faltante", "Actualizacion"],
+            filas,
+            self.output_dir / "stock_bajo.pdf",
+        )
+
+    def exportar_movimientos_pdf(self) -> Path:
+        registros = self.obtener_movimientos_generales()
+        filas = [
+            [
+                r.codigo_producto,
+                r.nombre_producto,
+                r.tipo_movimiento,
+                r.tipo,
+                str(r.cantidad),
+                r.fecha,
+                r.usuario,
+                r.observacion or "-",
+            ]
+            for r in registros
+        ]
+        return generar_pdf_tabular(
+            "Reporte de movimientos generales",
+            ["Codigo", "Nombre", "Movimiento", "Tipo", "Cantidad", "Fecha", "Usuario", "Obs"],
+            filas,
+            self.output_dir / "movimientos_generales.pdf",
+        )

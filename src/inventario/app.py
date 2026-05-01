@@ -4,7 +4,7 @@ from pathlib import Path
 
 from inventario.db.init_db import initialize_database
 from inventario.db.session import SessionLocal
-from inventario.config import SALIDAS_PDF_DIR
+from inventario.config import REPORTES_PDF_DIR, SALIDAS_PDF_DIR
 from inventario.modules.entradas.service import EntradaService
 from inventario.modules.movimientos.service import MovimientoService
 from inventario.modules.productos.service import ProductoService
@@ -23,7 +23,7 @@ def _run_gui() -> int:
     producto_service = ProductoService(session)
     entrada_service = EntradaService(session)
     movimiento_service = MovimientoService(session)
-    reporte_service = ReporteService(session)
+    reporte_service = ReporteService(session, REPORTES_PDF_DIR)
     salida_service = SalidaService(session, SALIDAS_PDF_DIR)
     usuario_service = UsuarioService(session)
     usuario_service.asegurar_usuario_admin()

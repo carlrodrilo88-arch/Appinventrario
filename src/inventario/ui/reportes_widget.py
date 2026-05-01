@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from PySide6.QtWidgets import (
+    QHBoxLayout,
     QLabel,
+    QMessageBox,
     QPushButton,
     QTabWidget,
     QTableWidget,
@@ -10,7 +12,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from inventario.config import REPORTES_PDF_DIR
 from inventario.modules.reportes.service import ReporteService
+from inventario.utils import open_file
 
 
 class ReportesWidget(QWidget):
@@ -64,13 +68,35 @@ class ReportesWidget(QWidget):
         refresh_button = QPushButton("Actualizar reportes")
         refresh_button.clicked.connect(self._load_reportes)
 
+        export_stock_button = QPushButton("Exportar stock actual a PDF")
+        export_stock_button.clicked.connect(self._export_stock_actual)
+        open_stock_button = QPushButton("Abrir stock actual PDF")
+        open_stock_button.clicked.connect(lambda: self._abrir_pdf("stock_actual.pdf"))
+        export_bajo_button = QPushButton("Exportar stock bajo a PDF")
+        export_bajo_button.clicked.connect(self._export_stock_bajo)
+        open_bajo_button = QPushButton("Abrir stock bajo PDF")
+        open_bajo_button.clicked.connect(lambda: self._abrir_pdf("stock_bajo.pdf"))
+        export_mov_button = QPushButton("Exportar movimientos a PDF")
+        export_mov_button.clicked.connect(self._export_movimientos)
+        open_mov_button = QPushButton("Abrir movimientos PDF")
+        open_mov_button.clicked.connect(lambda: self._abrir_pdf("movimientos_generales.pdf"))
+
         self.tabs.addTab(self._wrap_table(self.stock_actual_table), "Stock actual")
         self.tabs.addTab(self._wrap_table(self.stock_bajo_table), "Stock bajo")
         self.tabs.addTab(self._wrap_table(self.movimientos_table), "Movimientos")
 
+        buttons_layout = QHBoxLayout()
+        buttons_layout.addWidget(refresh_button)
+        buttons_layout.addWidget(export_stock_button)
+        buttons_layout.addWidget(open_stock_button)
+        buttons_layout.addWidget(export_bajo_button)
+        buttons_layout.addWidget(open_bajo_button)
+        buttons_layout.addWidget(export_mov_button)
+        buttons_layout.addWidget(open_mov_button)
+
         layout = QVBoxLayout()
         layout.addWidget(QLabel("Reportes"))
-        layout.addWidget(refresh_button)
+        layout.addLayout(buttons_layout)
         layout.addWidget(self.tabs)
         self.setLayout(layout)
 
@@ -142,3 +168,24 @@ class ReportesWidget(QWidget):
                 self.movimientos_table.setItem(row, column, QTableWidgetItem(value))
 
         self.movimientos_table.resizeColumnsToContents()
+
+    def _export_stock_actual(self) -> None:
+        pdf_path = self.reporte_service.exportar_stock_actual_pdf()
+        QMessageBox.information(self, "Reportes", f"PDF generado en:\n{pdf_path}")
+
+    def _export_stock_bajo(self) -> None:
+        pdf_path = self.reporte_service.exportar_stock_bajo_pdf()
+        QMessageBox.information(self, "Reportes", f"PDF generado en:\n{pdf_path}")
+
+    def _export_movimientos(self) -> None:
+        pdf_path = self.reporte_service.exportar_movimientos_pdf()
+        QMessageBox.information(self, "Reportes", f"PDF generado en:\n{pdf_path}")
+
+    def _abrir_pdf(self, file_name: str) -> None:
+        pdf_path = REPORTES_PDF_DIR / file_name
+        try:
+            open_file(pdf_path)
+        except FileNotFoundError as exc:
+            QMessageBox.warning(self, "Reportes", str(exc))
+        except OSError as exc:
+            QMessageBox.warning(self, "Reportes", f"No se pudo abrir el PDF: {exc}")

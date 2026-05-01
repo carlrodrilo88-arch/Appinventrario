@@ -19,6 +19,8 @@ from PySide6.QtWidgets import (
 from inventario.modules.productos.service import ProductoService
 from inventario.modules.salidas.service import SalidaData, SalidaService
 from inventario.modules.usuarios.service import UsuarioService
+from inventario.config import SALIDAS_PDF_DIR
+from inventario.utils import open_file
 
 
 class SalidasWidget(QWidget):
@@ -63,10 +65,16 @@ class SalidasWidget(QWidget):
 
         guardar_button = QPushButton("Guardar salida")
         guardar_button.clicked.connect(self._guardar_salida)
+        abrir_button = QPushButton("Abrir PDF seleccionado")
+        abrir_button.clicked.connect(self._abrir_pdf_seleccionado)
 
         top_layout = QHBoxLayout()
         top_layout.addWidget(form_box)
-        top_layout.addWidget(guardar_button)
+        botones_layout = QVBoxLayout()
+        botones_layout.addWidget(guardar_button)
+        botones_layout.addWidget(abrir_button)
+        botones_layout.addStretch()
+        top_layout.addLayout(botones_layout)
 
         container = QVBoxLayout()
         container.addLayout(top_layout)
@@ -134,3 +142,20 @@ class SalidasWidget(QWidget):
                 self.table.setItem(row, column, QTableWidgetItem(value))
 
         self.table.resizeColumnsToContents()
+
+    def _abrir_pdf_seleccionado(self) -> None:
+        selected_items = self.table.selectedItems()
+        if not selected_items:
+            QMessageBox.warning(self, "Salidas", "Selecciona una salida para abrir su PDF.")
+            return
+
+        row = selected_items[0].row()
+        pdf_name = self.table.item(row, 6).text()
+        pdf_path = SALIDAS_PDF_DIR / pdf_name
+
+        try:
+            open_file(pdf_path)
+        except FileNotFoundError as exc:
+            QMessageBox.warning(self, "Salidas", str(exc))
+        except OSError as exc:
+            QMessageBox.warning(self, "Salidas", f"No se pudo abrir el PDF: {exc}")
